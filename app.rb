@@ -8,10 +8,10 @@ require 'bundler/setup'
 set :redis, Redis.new(url: ENV['REDIS_URL'])
 
 get '/' do
-  'hello frank sinatra'
+  'OK'
 end
 
-get '/ink' do
+get '/inc' do
   settings.redis.incr('counter').to_s
 end
 
