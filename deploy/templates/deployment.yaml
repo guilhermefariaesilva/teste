@@ -1,0 +1,82 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "infra-app.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "infra-app.name" . }}
+    helm.sh/chart: {{ include "infra-app.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.web.replicas }}
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "infra-app.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  {{- if .Values.web.strategy }}
+  strategy:
+{{ toYaml .Values.web.strategy | indent 4 }}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "infra-app.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: {{ template "infra-app.fullname" . }}
+          image: "{{ .Values.web.image }}:{{ .Values.web.imageTag }}"
+          imagePullPolicy: {{ default "IfNotPresent" .Values.web.imagePullPolicy | quote }}
+          # command: ["/bin/bash"]
+          # args:
+          #   - -exc
+          #   - rackup --host 0.0.0.0 -p 5000
+          env:
+            - name: POD_IP
+              valueFrom: { fieldRef: { fieldPath: status.podIP } }
+            - name: APP_NAME
+              value: {{ template "infra-app.name" . }}
+            - name: APP_FULLNAME
+              value: {{ template "infra-app.fullname" . }}
+            - name: APP_NAMESPACE
+              value: {{ .Release.Namespace }}
+            - name: REDIS_URL
+              value: redis://infra-app-redis-master:6379/0
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "infra-app.fullname" . }}-redis
+                  key: redis-password
+
+          ports:
+            - name: http
+              containerPort: {{ .Values.web.httpPort }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            # length of time to wait for a pod to initialize
+            # after pod startup, before applying health checking
+            initialDelaySeconds: 50
+            timeoutSeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 10
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            # length of time to wait for a pod to initialize
+            # after pod startup, before applying health checking
+            initialDelaySeconds: 10
+            timeoutSeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 10
+
+        {{- if .Values.web.resources }}
+          resources:
+{{ toYaml .Values.web.resources | indent 12 }}
+        {{- end }}
