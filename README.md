@@ -1,54 +1,51 @@
 # Infra-app
 
-An app to apply SRE tests.
+It contains an HTTP server implementation. It responds to all HTTP requests to the URI paths `/app` and `/healthz`.
 
 ## Basic instructions
 
 To run in development, just run:
 
 ```sh
-docker-compose up
+PORT=5000 go run main.go
+```
+
+To build, just run:
+
+```sh
+go build -o app
+PORT=5000 ./app
+```
+
+By using the GOOS and GOARCH environment variables, you can control which OS and architecture your final binary is built fo.
+
+```sh
+GOOS=linux GOARCH=amd64 go build -o app
+
+# to check the type of file
+file app
+app: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, Go BuildID=VlCWiOY1myXoArwKJ8-P/gL-oXKeuH4tOr4nCvhNv/6WUnDAZ95hnz49f7CeAV/Lg9OfRg0c1768RSFbAi4, not stripped
+```
+
+## How to use
+
+```sh
+$ curl -i http://127.0.0.1:5000/app
+HTTP/1.1 200 OK
+Content-Type: application/json
+Date: Fri, 26 Jun 2020 20:14:57 GMT
+Content-Length: 95
+
+{
+  "app": "Infra Go App",
+  "hostname": "ebc919dc7272",
+  "version": "0.0.2"
+}
 ```
 
 ```sh
-docker-compose build
-docker-compose run web ruby -Itest "test/*"
+$ curl -i http://127.0.0.1:5000/healthz
+HTTP/1.1 200 OK
+Date: Fri, 26 Jun 2020 20:14:53 GMT
+Content-Length: 0
 ```
-
-## Deployment from local machine
-
-### Starting helm in the server
-
-```sh
-kubectl create serviceaccount --namespace kube-system tiller
-kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
-kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
-helm init --service-account tiller --upgrade
-```
-
-### Starting helm in the client
-
-```sh
-helm init --client-only
-```
-
-### Run deploy
-
-NOTE: Get `./credentials/gcloud_service_account.json` from project admin
-
-```sh
-docker-compose build web
-
-export GCLOUD_PROJECT_ID=magnetis-gullit-test
-export GCLOUD_COMPUTE_ZONE=us-central1-a
-export GCLOUD_CLUSTER_NAME=standard-cluster-1
-export DOCKER_IMAGE=infra-app_web
-export DOCKER_TAG=latest
-export GCLOUD_SERVICE_KEY=$(cat ./credentials/gcloud_service_account.json | base64)
-
-./deploy/scripts/deploy.setup.sh
-./deploy/scripts/image.sh
-./deploy/scripts/deploy.sh
-```
-
-NOTE: When the first deploy fail, you will need to remove the release before starting again: `helm delete --purge infra-app`
