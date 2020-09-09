@@ -45,7 +45,7 @@ Content-Length: 95
 ```
 
 ```sh
-$ curl -i -u myuser:s3cr3t  http://127.0.0.1:500/admin
+$ curl -i -u myuser:s3cr3t  http://127.0.0.1:5000/admin
 HTTP/1.1 200 OK
 Content-Type: application/json
 Date: Fri, 26 Jun 2020 20:14:57 GMT
